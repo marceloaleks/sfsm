@@ -40,7 +40,7 @@ public class TestFSM {
     
     
     //Redirect the log output to the sys out
-//    fsm.setLogStream(System.out);
+    fsm.setLogStream(System.out);
     fsm.print();
     fsm.startInSameThread();
 

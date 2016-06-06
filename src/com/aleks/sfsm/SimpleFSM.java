@@ -195,7 +195,7 @@ public class SimpleFSM extends Thread {
     return null;
   }
 
-  void setLogStream(PrintStream out) {
+  public void setLogStream(PrintStream out) {
     this.log = out;
   }
 
