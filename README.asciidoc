@@ -8,7 +8,7 @@ Finite state machine implemented in Java language +
 
 == Sample code and instructions
 
-[source,]
+[source,java]
 ----
 SimpleFSM fsm = new SimpleFSM() { <1>
       @Override
