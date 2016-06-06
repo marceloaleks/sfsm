@@ -9,6 +9,8 @@ import java.io.IOException;
 import java.io.OutputStream;
 import java.io.PrintStream;
 import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.Map;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -34,7 +36,8 @@ public class SimpleFSM extends Thread {
   private boolean gError; //error in State process (global to be accessed inside threads)
   private Exception gex; //Gobal variable to save the exception object
   private boolean gbContinue;
-
+  Map<String, Object> gSave = new HashMap();
+  
   /**
    * Creates a new Simple Finite State Machine
    */
@@ -104,6 +107,7 @@ public class SimpleFSM extends Thread {
   public void mustStop() {
     gbContinue = false;
     future.cancel(true);
+    cleanAndFinish();
   }
 
   @Override
@@ -150,14 +154,19 @@ public class SimpleFSM extends Thread {
 
     }
 
-    //Terminates the thread pool
+    cleanAndFinish();
+
+  }
+
+  private void cleanAndFinish() {
+        //Terminates the thread pool
     poolThread.shutdownNow();
     onExit(gex); //Call exit method passing the exception (if it has) for the last node excecuted
 
     if (!gError)
       onSuccess();
   }
-
+  
   //Born to be wild, ops, overridable ;-D
   public void onExit(Exception ex) {
   }
@@ -216,6 +225,20 @@ public class SimpleFSM extends Thread {
     this.log = out;
   }
 
+  /**
+   * Save an object, so you will be able to see its value at the end or use it in other states
+   * @param str The key
+   * @param value Some object
+   */
+  public void save(String str, Object value) {
+    gSave.put(str, value);
+  }
+  
+  public Object get(String key) {
+    return gSave.get(key);
+  }
+  
+  
   /**
    * Writes to null
    */
