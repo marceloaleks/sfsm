@@ -1,0 +1,70 @@
+Simple Finite State Machine
+===========================
+
+Finite state machine implemented in Java language +
+
+
+
+
+== Sample code and instructions
+
+[source,]
+----
+SimpleFSM fsm = new SimpleFSM() { <1>
+      @Override
+      public void onExit() { <2>
+        System.out.println("THE END");
+      }
+      
+    };
+    
+
+    int secs[] = new int[]{3, 0};
+    Node n2 = fsm.addState("T1", () -> { <3>
+      System.out.printf("First Node  pausa=%d secs\n", secs[0]);
+
+      TimeUnit.SECONDS.sleep(secs[0]--);
+
+    }).setTimeout(2000) <4>
+      .setRetries(5); <4>
+
+    fsm.addState(() -> { <3>
+      System.out.println("no name");
+      if (val[1]++ == 0) throw new Exception("I don´t like zeros!");
+    }).setNextOnError("T1"); <5>
+
+    
+    fsm.addState("T3", () -> {
+      System.out.println("Third Node");
+      secs[0] = 7;
+    }).setNext("T1"); <4>
+
+    
+    
+    //Redirect the log output to the sys out
+//    fsm.setLogStream(System.out); <6>
+    fsm.print(); <7>
+    //fsm.start(); <8>
+    fsm.startInSameThread(); <9>
+----
+
+== How to use
+
+<1> Implement an object of the class SimpleFSM 
+<2> If you want you can override the onexit method to be signalized when the FSM finishes
+<3> Add a state, you can pass a name or ommit it.
+<4> You can define the Timeout, number of retries and the next state to be executed on success
+<5> ... or the next one to go in when something goes [red]#wrong#
+<6> Define your log output
+<7> Print the nodes
+<8> Start the state machine on a separate thread
+<9> Start the state machine on the current thread
+
+
+== ENJOY !!!
+
+
+
+
+
+
