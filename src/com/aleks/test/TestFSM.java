@@ -3,17 +3,18 @@ package com.aleks.test;
 import com.aleks.sfsm.Node;
 import com.aleks.sfsm.SimpleFSM;
 import java.util.concurrent.TimeUnit;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 
 public class TestFSM {
 
   public TestFSM() {
 
-    SimpleFSM fsm = new SimpleFSM() {
+    final SimpleFSM fsm = new SimpleFSM() {
       @Override
-      public void onExit() {
-        System.out.println("THE END");
+      public void onExit(Exception ex) {
+        System.out.println("THE END with error=" + ex);
       }
-      
     };
     
 
@@ -22,7 +23,6 @@ public class TestFSM {
       System.out.printf("First Node  pausa=%d secs\n", val[0]);
 
       TimeUnit.SECONDS.sleep(val[0]--);
-
     }).setTimeout(2000)
       .setRetries(5);
 
@@ -42,7 +42,15 @@ public class TestFSM {
     //Redirect the log output to the sys out
     fsm.setLogStream(System.out);
     fsm.print();
-    fsm.startInSameThread();
+    fsm.start();
+    
+    try {
+      TimeUnit.SECONDS.sleep(5);
+    } catch (InterruptedException ex) {
+      Logger.getLogger(TestFSM.class.getName()).log(Level.SEVERE, null, ex);
+    }
+    System.out.println("Must stop now!!");
+    fsm.mustStop();
 
   }
 

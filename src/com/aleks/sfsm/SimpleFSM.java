@@ -30,8 +30,10 @@ public class SimpleFSM extends Thread {
 
   private Node execNode;  //Node beeing executed
   private Node lastNode = null; //Used to change the name of the next state, pointing to the next on the list
-  PrintStream log; 
-  private boolean error; //error in State process (global to be accessed inside threads)
+  PrintStream log;
+  private boolean gError; //error in State process (global to be accessed inside threads)
+  private Exception gex; //Gobal variable to save the exception object
+  private boolean gbContinue;
 
   /**
    * Creates a new Simple Finite State Machine
@@ -55,9 +57,9 @@ public class SimpleFSM extends Thread {
     //Add the state in the list
     listStates.add(node);
 
-    //Return the node to continue the set up, if necessary
     lastNode = node;
 
+    //Return the node to continue the set up, if necessary
     return node;
   }
 
@@ -97,44 +99,50 @@ public class SimpleFSM extends Thread {
     run();
   }
 
+  Future future;
+
+  public void mustStop() {
+    gbContinue = false;
+    future.cancel(true);
+  }
+
   @Override
   public void run() {
     execNode = listStates.get(0);
+    gbContinue = true;
 
-    while (execNode != null) {
-      error = false;
+    while (gbContinue) {
+      gError = false;
+      gex = null;
 
-      //Executes the thread
-      Future future = poolThread.submit(() -> {
-        error = execNodeThread(execNode);
+      //run the node thread
+      future = poolThread.submit(() -> {
+        gError = execNodeThread(execNode);
       });
 
       //Wait for the thread completion
       try {
         future.get(execNode.getTimeout(), TimeUnit.MILLISECONDS);
         if (future.isCancelled())
-          error = true;
+          gError = true;
 
-      } catch (InterruptedException ex) {
-
-        log.println("  \033[31m [Error] " + ex.getMessage() + "  " + ex.getStackTrace()[2]);
-        error = true;
-      } catch (ExecutionException ex) {
+      } catch (InterruptedException | ExecutionException ex) {
         log.println("  \033[31m [Error] " + ex.getMessage() + "  " + ex.getStackTrace()[1]);
-        error = true;
+        gex = ex;
+        gError = true;
       } catch (TimeoutException ex) {
         future.cancel(true);
         log.println("  \033[31m [Warn] Timeout retrying more " + execNode.getRetries() + " times");
-        error = true;
+        gex = ex;
+        gError = true;
       } catch (NullPointerException ex) {
         future.cancel(true);
-        if (log != null)
-          log.println("  \033[31m [Error] Step Not Found " + ex.getMessage() + "  " + ex.getStackTrace()[1]);
-        error = true;
-
+        log.println("  \033[31m [Error] Step Not Found " + ex.getMessage() + "  " + ex.getStackTrace()[1]);
+        gex = ex;
+        gError = true;
       }
 
-      execNode = getNextNode(error);
+      execNode = getNextNode(gError);
       if (execNode == null) {
         log.println("Last Step");
         break;
@@ -144,17 +152,26 @@ public class SimpleFSM extends Thread {
 
     //Terminates the thread pool
     poolThread.shutdownNow();
-    onExit();
+    onExit(gex); //Call exit method passing the exception (if it has) for the last node excecuted
+
+    if (!gError)
+      onSuccess();
   }
 
-  //To be overridable
-  public void onExit() {}
-  
+  //Born to be wild, ops, overridable ;-D
+  public void onExit(Exception ex) {
+  }
+
+  //Called only when the FSM exit without any type of error
+  public void onSuccess() {
+  }
+
   private boolean execNodeThread(Node node) {
     boolean error = false;
     try {
       execNode.onEnter();
     } catch (Exception ex) {
+      gex = ex;
       if (ex instanceof InterruptedException == false)
         log.printf("  \033[31m [Exception]  %s  in %s\n", ex.toString(), ex.getStackTrace()[0]);
       error = true;
@@ -182,7 +199,7 @@ public class SimpleFSM extends Thread {
       else
         n = getNodeByName(execNode.getNext());
 
-    log.printf("  \u001B[34m  Next=(%s)  Error=%s \n", n, error);
+    log.printf("  \u001B[34m  Next=(%s)  Error=%s \n", n, gError);
 
     return n;
   }
@@ -199,9 +216,6 @@ public class SimpleFSM extends Thread {
     this.log = out;
   }
 
-  
-  
-  
   /**
    * Writes to null
    */
